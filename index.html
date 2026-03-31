@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cloud API Monitoring Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .status-pass { color: green; font-weight: bold; }
+        .status-fail { color: red; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-light p-5">
+    <div class="container bg-white p-4 shadow rounded">
+        <h2 class="text-primary mb-4">🚀 AWS API Monitor</h2>
+        
+        <div class="input-group mb-3">
+            <span class="input-group-text">URL</span>
+            <input type="text" id="apiUrl" class="form-control" placeholder="https://jsonplaceholder.typicode.com/todos/1">
+            <button class="btn btn-primary" onclick="runTest()">Run Test</button>
+        </div>
+
+        <div id="loader" class="d-none text-center">Testing...</div>
+
+        <div id="resultCard" class="card d-none">
+            <div class="card-body">
+                <h5>Results:</h5>
+                <p>Status: <span id="resStatus"></span></p>
+                <p>Latency: <span id="resTime"></span> ms</p>
+                <div class="bg-dark text-light p-2 rounded">
+                    <pre id="resRaw" class="mb-0" style="font-size: 12px;"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function runTest() {
+            const url = document.getElementById('apiUrl').value;
+            const apiGatewayUrl = "https://0fc0qyeo25.execute-api.eu-north-1.amazonaws.com/dev"; // <-- PASTE HERE
+
+            document.getElementById('loader').classList.remove('d-none');
+            
+            try {
+                const response = await fetch(apiGatewayUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url, method: 'GET' })
+                });
+                const data = await response.json();
+
+                document.getElementById('resultCard').classList.remove('d-none');
+                document.getElementById('resStatus').innerText = data.statusCode;
+                document.getElementById('resStatus').className = data.statusCode < 400 ? 'status-pass' : 'status-fail';
+                document.getElementById('resTime').innerText = data.responseTime;
+                document.getElementById('resRaw').innerText = JSON.stringify(data, null, 2);
+            } catch (err) {
+                alert("Error connecting to AWS backend!");
+            } finally {
+                document.getElementById('loader').classList.add('d-none');
+            }
+        }
+    </script>
+</body>
+</html>
