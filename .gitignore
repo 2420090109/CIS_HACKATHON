@@ -1,0 +1,12 @@
+# OS Metadata
+.DS_Store
+Thumbs.db
+
+# Environments
+.env
+venv/
+env/
+
+# IDE settings
+.vscode/
+.idea/
