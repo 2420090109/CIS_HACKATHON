@@ -3,7 +3,7 @@
 An automated, serverless infrastructure monitoring tool built on **AWS** and hosted via **GitHub Pages**. This project demonstrates a fully decoupled Cloud Infrastructure Services (CIS) architecture.
 
 ## 🌐 Live Demo
-[Click here to view the Live Tool](https://<YOUR_GITHUB_USERNAME>.github.io/<YOUR_REPO_NAME>/)
+[Click here to view the Live Tool](https://2420090109.github.io/CIS_HACKATHON/)
 
 ---
 
