@@ -3,130 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud-Native API Monitor Pro</title>
+    <title>Cloud-Native API Monitor | AWS Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .slow-api { color: #dc3545; font-weight: bold; } /* Red for slow */
-        .fast-api { color: #198754; font-weight: bold; } /* Green for fast */
-        #chartContainer { max-height: 300px; margin-top: 20px; }
+        .metric-card { border-left: 5px solid #0d6efd; transition: 0.3s; }
+        .metric-card:hover { transform: translateY(-5px); }
+        #latencyChart { max-height: 300px; }
+        .status-badge { font-size: 0.9rem; padding: 0.5em 1em; }
     </style>
 </head>
 <body class="bg-light">
-    <div class="container py-5">
-        <h2 class="mb-4">🚀 AWS API Performance Monitor</h2>
-        
-        <div class="card shadow-sm p-4 mb-4">
-            <div class="row g-3">
-                <div class="col-md-7">
-                    <label class="form-label">API Endpoint URL</label>
-                    <input type="text" id="apiUrl" class="form-control" placeholder="https://api.example.com/data">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Method</label>
-                    <select id="apiMethod" class="form-select">
-                        <option value="GET">GET</option>
-                        <option value="POST">POST</option>
+
+<div class="container py-5">
+    <header class="pb-3 mb-4 border-bottom d-flex justify-content-between align-items-center">
+        <h1 class="text-dark fw-bold">🚀 CloudMonitor <span class="text-primary">v2.0</span></h1>
+        <span class="badge bg-dark">AWS Infrastructure: Lambda + DynamoDB</span>
+    </header>
+
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card shadow-sm p-4 h-100">
+                <h5 class="mb-3">New API Test</h5>
+                <div class="mb-3">
+                    <label class="form-label">HTTP Method</label>
+                    <select id="method" class="form-select">
+                        <option value="GET">GET (Retrieve)</option>
+                        <option value="POST">POST (Create/Update)</option>
                     </select>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button onclick="runTest()" class="btn btn-primary w-100">Run Test</button>
+                <div class="mb-3">
+                    <label class="form-label">Endpoint URL</label>
+                    <input type="text" id="apiUrl" class="form-control" placeholder="https://api.example.com/v1">
                 </div>
+                <button onclick="runTest()" id="testBtn" class="btn btn-primary w-100 py-2 fw-bold">RUN PERFORMANCE TEST</button>
             </div>
         </div>
 
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card shadow-sm p-4 h-100">
-                    <h5>Latest Result</h5>
-                    <hr>
-                    <div id="resultOutput">
-                        <p class="text-muted">No tests run yet.</p>
+        <div class="col-lg-8">
+            <div class="card shadow-sm p-4 h-100">
+                <h5>Real-Time Performance Trend</h5>
+                <canvas id="latencyChart"></canvas>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <div class="card p-3 shadow-sm metric-card">
+                        <small class="text-muted">Current Latency</small>
+                        <h2 id="currLatency">0 ms</h2>
                     </div>
                 </div>
-            </div>
-            
-            <div class="col-md-6">
-                <div class="card shadow-sm p-4 h-100">
-                    <h5>Performance Trends (Latency in ms)</h5>
-                    <hr>
-                    <canvas id="latencyChart"></canvas>
+                <div class="col-md-4">
+                    <div class="card p-3 shadow-sm metric-card border-info">
+                        <small class="text-muted">Status Code</small>
+                        <h2 id="currStatus">--</h2>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card p-3 shadow-sm metric-card" id="comparisonCard">
+                        <small class="text-muted">Vs. Previous Test</small>
+                        <h2 id="delta">--</h2>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        const apiGatewayUrl = const apiGatewayUrl = "https://0fc0qyeo25.execute-api.eu-north-1.amazonaws.com/dev"; // Ensure /dev/test is at the end
-        let performanceData = [];
-        let labels = [];
+<script>
+    // --- CONFIGURATION ---
+    const API_GATEWAY_URL = "https://0fc0qyeo25.execute-api.eu-north-1.amazonaws.com/dev";
+    let previousLatency = 0;
+    let latencyHistory = [];
+    let labels = [];
 
-        // Initialize Chart
-        const ctx = document.getElementById('latencyChart').getContext('2d');
-        const latencyChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Latency (ms)',
-                    data: performanceData,
-                    borderColor: '#0d6efd',
-                    tension: 0.1,
-                    fill: true,
-                    backgroundColor: 'rgba(13, 110, 253, 0.1)'
-                }]
-            },
-            options: { responsive: true, scales: { y: { beginAtZero: true } } }
-        });
+    // --- CHART INITIALIZATION ---
+    const ctx = document.getElementById('latencyChart').getContext('2d');
+    const latencyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Response Time (ms)',
+                data: latencyHistory,
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
 
-        async function runTest() {
-            const url = document.getElementById('apiUrl').value;
-            const method = document.getElementById('apiMethod').value;
-            const output = document.getElementById('resultOutput');
-
-            output.innerHTML = `<div class="spinner-border text-primary" role="status"></div> Testing...`;
-
-            try {
-                const response = await fetch(apiGatewayUrl, {
-                    method: 'POST', // We always POST to our Lambda
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: url, method: method }) // Lambda handles the target method
-                });
-
-                const data = await response.json();
-                
-                // Threshold Detection (e.g., > 500ms is slow)
-                const threshold = 500;
-                const speedClass = data.responseTime > threshold ? 'slow-api' : 'fast-api';
-                const speedLabel = data.responseTime > threshold ? '⚠️ SLOW API' : '⚡ FAST API';
-
-                // Update UI
-                output.innerHTML = `
-                    <p>Status: <span class="badge ${data.statusCode < 400 ? 'bg-success' : 'bg-danger'}">${data.statusCode}</span></p>
-                    <p>Latency: <span class="${speedClass}">${data.responseTime} ms</span> (${speedLabel})</p>
-                    <pre class="bg-dark text-white p-2 mt-2" style="font-size: 12px;">${JSON.stringify(data, null, 2)}</pre>
-                `;
-
-                // Update Chart Dashboard
-                updateChart(data.responseTime);
-
-            } catch (error) {
-                output.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
-            }
-        }
-
-        function updateChart(newLatency) {
-            const now = new Date().toLocaleTimeString();
-            labels.push(now);
-            performanceData.push(newLatency);
-
-            if (labels.length > 10) { // Keep only last 10 tests
-                labels.shift();
-                performanceData.shift();
-            }
-
-            latencyChart.update();
-        }
-    </script>
-</body>
-</html>
+    async function runTest() {
+        const url = document.getElementById('apiUrl').value;
+        const method = document.getElementById('method').value;
